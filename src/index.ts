@@ -1,4 +1,4 @@
-import { createServer, MCPServer, createTool, createPrompt } from '@modelcontextprotocol/sdk';
+import { Server } from '@modelcontextprotocol/sdk/server';
 import { MoneybirdClient } from './services/moneybird';
 import dotenv from 'dotenv';
 
@@ -27,7 +27,18 @@ const moneybirdClient = new MoneybirdClient(
 );
 
 // Create MCP server
-const server: MCPServer = createServer();
+const server = new Server(
+  {
+    name: "moneybird-mcp-server",
+    version: "0.1.0",
+  },
+  {
+    capabilities: {
+      resources: {},
+      tools: {},
+    },
+  },
+);
 
 // Set up server metadata
 server.metadata({
