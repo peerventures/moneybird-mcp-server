@@ -66,5 +66,5 @@ export async function createContact(contactData: z.infer<typeof CreateContactSch
 
 export async function updateContact(id: string, contactData: Partial<z.infer<typeof CreateContactSchema>>) {
   const client = getClient();
-  return await client.request('patch', `contacts/${id}`, { contact: contactData });
+  return await client.request('put', `contacts/${id}`, { contact: contactData });
 } 
