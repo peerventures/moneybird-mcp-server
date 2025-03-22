@@ -39,7 +39,7 @@ export class MoneybirdPermissionError extends MoneybirdError {
 export class MoneybirdRateLimitError extends MoneybirdError {
   resetAt: Date;
 
-  constructor(message: string, resetAt: Date) {
+  constructor(message: string, resetAt: Date = new Date()) {
     super(message);
     this.name = 'MoneybirdRateLimitError';
     this.resetAt = resetAt;
