@@ -88,6 +88,32 @@ const MoneybirdRequestSchema = z.object({
   data: z.any().optional().describe('Request data for POST and PUT requests (optional)')
 });
 
+// Add these interfaces at the top of your file
+interface MoneybirdContact {
+  id: string;
+  company_name?: string;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  phone?: string;
+  [key: string]: any; // For other properties that might exist
+}
+
+interface MoneybirdInvoice {
+  id: string;
+  invoice_id?: string;
+  contact_id?: string;
+  reference?: string;
+  state?: string;
+  date?: string;
+  due_date?: string;
+  total_price_incl_tax?: string | number;
+  total_price_excl_tax?: string | number;
+  currency?: string;
+  paid_at?: string;
+  [key: string]: any; // For other properties that might exist
+}
+
 // Register ListTools handler
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -153,8 +179,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const args = ListContactsSchema.parse(request.params.arguments);
         const contacts = await moneybirdClient.getContacts();
         
-        // Format contacts for better readability
-        const formattedContacts = contacts.map(contact => ({
+        // Add type annotation here
+        const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
           id: contact.id,
           company_name: contact.company_name,
           firstname: contact.firstname,
@@ -180,8 +206,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const args = ListSalesInvoicesSchema.parse(request.params.arguments);
         const invoices = await moneybirdClient.getSalesInvoices();
         
-        // Format invoices for better readability
-        const formattedInvoices = invoices.map(invoice => ({
+        // Add type annotation here
+        const formattedInvoices = invoices.map((invoice: MoneybirdInvoice) => ({
           id: invoice.id,
           invoice_id: invoice.invoice_id,
           contact_id: invoice.contact_id,
