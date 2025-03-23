@@ -10,29 +10,17 @@ import {
   InitializeRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createInterface } from 'readline';
 
 
 // Initialize environment variables
 dotenv.config();
 
-// Check for required environment variables
+// Required environment variables
 const requiredEnvVars = [
   'MONEYBIRD_API_TOKEN',
   'MONEYBIRD_ADMINISTRATION_ID'
 ];
-
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`Missing required environment variable: ${envVar}`);
-    process.exit(1);
-  }
-}
-
-// Initialize Moneybird client
-const moneybirdClient = new MoneybirdClient(
-  process.env.MONEYBIRD_API_TOKEN!,
-  process.env.MONEYBIRD_ADMINISTRATION_ID!
-);
 
 // Create MCP server
 const server = new Server(
@@ -49,30 +37,74 @@ const server = new Server(
   }
 );
 
+// Check for required environment variables
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
+
+// Initialize Moneybird client
+const moneybirdClient = new MoneybirdClient(
+  process.env.MONEYBIRD_API_TOKEN!,
+  process.env.MONEYBIRD_ADMINISTRATION_ID!
+);
+
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  // Use safe logging that works regardless of server state
+  if (server && typeof server.sendLoggingMessage === 'function') {
+    server.sendLoggingMessage({
+      level: "error",
+      data: `Uncaught exception: ${error}`,
+    });
+  } else {
+    console.error('Uncaught exception:', error);
+  }
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  // Use safe logging that works regardless of server state
+  if (server && typeof server.sendLoggingMessage === 'function') {
+    server.sendLoggingMessage({
+      level: "error",
+      data: `Unhandled rejection: ${reason}`,
+    });
+  } else {
+    console.error('Unhandled rejection:', reason);
+  }
 });
 
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
+  // Log the request with both methods to ensure visibility
   console.error("Received initialize request:", JSON.stringify(request));
+  
+  try {
+    server.sendLoggingMessage({
+      level: "info",
+      data: `Received initialize request: ${JSON.stringify(request)}`,
+    });
 
-  // Return a proper initialize response
-  return {
-    serverInfo: {
-      name: 'moneybird-mcp-server',
-      version: '1.0.0',
-    },
-    capabilities: {
-      tools: {
-        list: true,
-        call: true,
+    // Return a proper initialize response with complete information
+    console.error("Sending initialize response");
+    return {
+      serverInfo: {
+        name: 'moneybird-mcp-server',
+        version: '1.0.0',
+        description: 'MCP server for interacting with Moneybird API',
+        contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
       },
-    },
-  };
+      capabilities: {
+        tools: {
+          list: true,
+          call: true,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error in initialize handler:", error);
+    throw error;
+  }
 });
 
 // Format Moneybird errors for better readability
@@ -151,7 +183,11 @@ interface MoneybirdInvoice {
 
 // Register ListTools handler
 server.setRequestHandler(ListToolsRequestSchema, async (request) => {
-  console.error("Received ListTools request:", JSON.stringify(request));
+  server.sendLoggingMessage({
+    level: "info",
+    data: `Received ListTools request: ${JSON.stringify(request)}`,
+  });
+  
   return {
     tools: [
       {
@@ -205,7 +241,11 @@ server.setRequestHandler(ListToolsRequestSchema, async (request) => {
 
 // Register CallTool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  console.error("Received CallTool request:", JSON.stringify(request));
+  server.sendLoggingMessage({
+    level: "info",
+    data: `Received CallTool request: ${JSON.stringify(request)}`,
+  });
+  
   try {
     if (!request.params.arguments) {
       throw new Error("Arguments are required");
@@ -325,31 +365,118 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+// Debug JSON-RPC messages
+function setupStdioDebugger() {
+  const rl = createInterface({
+    input: process.stdin,
+    terminal: false
+  });
+
+  // Monitor incoming messages
+  rl.on('line', (line) => {
+    try {
+      // Only log if it looks like JSON
+      if (line.trim().startsWith('{')) {
+        const data = JSON.parse(line);
+        console.error(`RECEIVED: ${line}`);
+      }
+    } catch (e) {
+      // Not JSON or other error, ignore
+    }
+  });
+
+  // Override stdout.write to monitor outgoing messages
+  const originalStdoutWrite = process.stdout.write;
+  // @ts-ignore - We need to override this for debugging
+  process.stdout.write = function(chunk: string | Uint8Array, encoding?: BufferEncoding, callback?: (err?: Error) => void): boolean {
+    if (typeof chunk === 'string' && chunk.trim().startsWith('{')) {
+      try {
+        // Check if it's JSON
+        JSON.parse(chunk);
+        console.error(`SENDING: ${chunk}`);
+      } catch (e) {
+        // Not JSON, ignore
+      }
+    }
+    return originalStdoutWrite.call(this, chunk, encoding, callback);
+  };
+}
+
+// Global timeout to detect hanging server (60 seconds)
+const GLOBAL_TIMEOUT_MS = 60000;
+let serverInitialized = false;
+
 // Start the server
 async function runServer() {
   try {
-    const transport = new StdioServerTransport();
-    console.error("Starting Moneybird MCP Server...");
-    await server.connect(transport);
-    console.error("Moneybird MCP Server v0.0.1 running on stdio");
+    // Set up a global timeout to detect if the server is hanging
+    const globalTimeout = setTimeout(() => {
+      if (!serverInitialized) {
+        console.error("FATAL: Server initialization timeout after " + (GLOBAL_TIMEOUT_MS/1000) + " seconds. Exiting...");
+        process.exit(1);
+      }
+    }, GLOBAL_TIMEOUT_MS);
 
+    // Ensure the timeout doesn't prevent Node.js from exiting
+    globalTimeout.unref();
+    
+    // Set up debugging for JSON-RPC messages
+    setupStdioDebugger();
+    
+    // Use console.error for pre-connection logging
+    console.error("Starting Moneybird MCP Server...");
+    
+    // Create transport with debugging
+    console.error("Creating StdioServerTransport...");
+    const transport = new StdioServerTransport();
+    
+    // Set a timeout to detect hangs during connection
+    const connectionTimeout = setTimeout(() => {
+      console.error("WARNING: Server connection is taking longer than expected. Possible hang detected.");
+    }, 5000);
+    
+    console.error("Connecting server to transport...");
+    await server.connect(transport);
+    
+    // Clear the timeout since connection succeeded
+    clearTimeout(connectionTimeout);
+    
+    console.error("Server successfully connected to transport");
+    
+    // Now that the server is connected, we can use sendLoggingMessage
+    server.sendLoggingMessage({
+      level: "info",
+      data: "Moneybird MCP Server v0.0.2 running on stdio",
+    });
+
+    // Mark server as initialized
+    serverInitialized = true;
+    
     // Keep the Node.js process alive with a never-resolving promise
     return new Promise(() => {
-      // This promise intentionally never resolves
-      // It keeps the Node.js event loop active
-
+      console.error("Server is now running and waiting for requests");
+      
       // Add signal handlers to gracefully exit
       process.on('SIGINT', () => {
-        console.error("Server shutting down...");
+        console.error("Received SIGINT signal");
+        server.sendLoggingMessage({
+          level: "info",
+          data: "Server shutting down...",
+        });
         process.exit(0);
       });
 
       process.on('SIGTERM', () => {
-        console.error("Server shutting down...");
+        console.error("Received SIGTERM signal");
+        server.sendLoggingMessage({
+          level: "info",
+          data: "Server shutting down...",
+        });
         process.exit(0);
       });
     });
   } catch (error) {
+    // Use console.error for errors during startup
     console.error("Error starting server:", error);
     process.exit(1);
   }
@@ -357,6 +484,8 @@ async function runServer() {
 
 // Keep this line as is - it calls your modified runServer function
 runServer().catch((error) => {
+  // We can't use server.sendLoggingMessage here because if we get an error before 
+  // the server is properly initialized, it won't be available
   console.error("Fatal error in main():", error);
   process.exit(1);
 });
