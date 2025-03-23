@@ -4,14 +4,15 @@ export class MoneybirdClient {
   private client: AxiosInstance;
   private administrationId: string;
 
-  constructor(apiToken: string, administrationId: string) {
+  constructor(apiToken: string, administrationId: string, timeout = 30000) {
     this.administrationId = administrationId;
     this.client = axios.create({
       baseURL: 'https://moneybird.com/api/v2',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: timeout
     });
   }
 

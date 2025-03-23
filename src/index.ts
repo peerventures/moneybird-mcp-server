@@ -42,6 +42,8 @@ const server = new McpServer({
   autoImplementResourcesList: true,
 });
 
+
+
 // Format Moneybird errors for better readability
 function formatMoneybirdError(error: any): string {
   let message = `Moneybird API Error: ${error.message}`;
