@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { MoneybirdClient } from './services/moneybird.js';
 import dotenv from 'dotenv';
