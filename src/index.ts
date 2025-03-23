@@ -14,6 +14,8 @@ import { createInterface } from 'readline';
 import { VERSION } from './common/version.js';
 import { MoneybirdContact } from './operations/contacts.js';
 import { MoneybirdInvoice } from './operations/invoices.js';
+import { ListContactsSchema } from './operations/contacts.js';
+import { listContacts } from './operations/contacts.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -152,12 +154,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "list_contacts",
-        description: "List all contacts from your Moneybird account",
+        description: "List all contacts from your Moneybird account with optional filtering",
         inputSchema: {
           type: "object",
           properties: {
             page: {type: "number", description: "Page number for pagination"},
-            perPage: {type: "number", description: "Items per page"}
+            perPage: {type: "number", description: "Items per page"},
+            query: {type: "string", description: "General search term across contact fields"},
+            filter: {type: "string", description: "Specific filter in format 'property:value' (e.g., 'created_after:2023-01-01 00:00:00 UTC', 'updated_after:2023-01-01', 'first_name:value')"},
+            include_archived: {type: "boolean", description: "Include archived contacts in results"},
+            todo: {type: "string", description: "Filter contacts based on outstanding tasks"}
           },
           additionalProperties: false
         }
@@ -282,8 +288,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const progress = progressUpdates('fetching contacts');
 
         try {
-          const contacts = await moneybirdClient.getContacts();
+          // Convert args to the expected format for our listContacts function
+          const options = args as z.infer<typeof ListContactsSchema>;
+          
+          // Log filter information
+          if (options.filter) {
+            console.error(`Applying filter: ${options.filter}`);
+          }
+          if (options.query || options.include_archived || options.todo) {
+            console.error(`Additional parameters: ${JSON.stringify({
+              query: options.query,
+              include_archived: options.include_archived,
+              todo: options.todo
+            })}`);
+          }
+
+          const result = await listContacts(options);
           clearInterval(progress);
+          
+          const contacts = result.contacts;
           console.error(`Successfully retrieved ${contacts.length} contacts`);
 
           // Format contacts for better readability
@@ -307,8 +330,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             };
           }
 
+          // Add filter information to response if filters were applied
+          let responseText = JSON.stringify(formattedContacts, null, 2);
+          if (result.filtered) {
+            responseText = `Filtered contacts with criteria: ${JSON.stringify(result.filterCriteria)}\n\n${responseText}`;
+          }
+
           return {
-            content: [{type: "text", text: JSON.stringify(formattedContacts, null, 2)}]
+            content: [{type: "text", text: responseText}]
           };
         } catch (error) {
           clearInterval(progress);

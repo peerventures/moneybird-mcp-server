@@ -8,6 +8,10 @@ export const GetContactSchema = z.object({
 export const ListContactsSchema = z.object({
   page: z.number().int().positive().optional().describe('Page number (starts from 1)'),
   perPage: z.number().int().min(1).max(100).optional().describe('Number of items per page (max 100)'),
+  query: z.string().optional().describe('Search term for general contact search'),
+  filter: z.string().optional().describe('Filter string in format "property:value" (e.g., "created_after:2023-01-01 00:00:00 UTC", "updated_after:2023-01-01", "first_name:value")'),
+  include_archived: z.boolean().optional().describe('Include archived contacts in the results'),
+  todo: z.string().optional().describe('Filter contacts based on outstanding tasks')
 });
 
 export const CreateContactSchema = z.object({
@@ -45,20 +49,55 @@ export async function getContact(id: string) {
   return await client.getContact(id);
 }
 
-export async function listContacts(page?: number, perPage?: number) {
+export async function listContacts(options: z.infer<typeof ListContactsSchema> = {}) {
   const client = getClient();
+  
+  // If we have any filtering parameters, use the filter endpoint
+  if (options.filter || options.query || options.include_archived || options.todo) {
+    const params: Record<string, string | number | boolean> = {};
+    
+    // Handle pagination parameters
+    if (options.page) params.page = options.page;
+    if (options.perPage) params.per_page = options.perPage;
+    
+    // Handle filter parameter (the primary filtering mechanism)
+    if (options.filter) {
+      params.filter = options.filter;
+    }
+    
+    // Handle other parameters
+    if (options.query) params.query = options.query;
+    if (options.include_archived) params.include_archived = options.include_archived;
+    if (options.todo) params.todo = options.todo;
+    
+    // Build the URL with parameters
+    const queryString = new URLSearchParams(
+      Object.entries(params).map(([k, v]) => [k, String(v)])
+    ).toString();
+    
+    // Use the filter endpoint with query parameters
+    const contacts = await client.request('get', `contacts/filter?${queryString}`);
+    
+    return { 
+      contacts,
+      filtered: true,
+      filterCriteria: { ...options }
+    };
+  }
+  
+  // Otherwise use the standard endpoint
   const contacts = await client.getContacts();
   
-  // Basic pagination if requested
-  if (page && perPage) {
-    const startIndex = (page - 1) * perPage;
-    const endIndex = startIndex + perPage;
+  // Apply client-side pagination if requested
+  if (options.page && options.perPage) {
+    const startIndex = (options.page - 1) * options.perPage;
+    const endIndex = startIndex + options.perPage;
     return {
       contacts: contacts.slice(startIndex, endIndex),
-      page,
-      perPage,
+      page: options.page,
+      perPage: options.perPage,
       totalCount: contacts.length,
-      totalPages: Math.ceil(contacts.length / perPage)
+      totalPages: Math.ceil(contacts.length / options.perPage)
     };
   }
   
