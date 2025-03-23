@@ -5,7 +5,7 @@ A Model Context Protocol (MCP) server that connects AI assistants like Claude to
 ## Features
 
 - **Contact Management**: List, retrieve, filter, create, and update contacts
-  - Advanced filtering by creation date, update date, name, and more
+    - Advanced filtering by creation date, update date, name, and more
 - **Financial Data**: Access sales invoices, financial accounts, and payments
 - **Business Operations**: Manage products, projects, and time entries
 - **Custom Requests**: Make custom API requests to Moneybird endpoints
@@ -14,9 +14,9 @@ A Model Context Protocol (MCP) server that connects AI assistants like Claude to
 ## New Developments
 
 - **Enhanced Contact Filtering**: Filter contacts using Moneybird's advanced query syntax
-  - Filter by creation date: `created_after:2023-01-01 00:00:00 UTC`
-  - Filter by update date: `updated_after:2023-01-01 10:45:35 UTC`
-  - Filter by properties: `first_name:value`, etc.
+    - Filter by creation date: `created_after:2023-01-01 00:00:00 UTC`
+    - Filter by update date: `updated_after:2023-01-01 10:45:35 UTC`
+    - Filter by properties: `first_name:value`, etc.
 - **Improved Error Handling**: Better error messages and recovery
 - **Performance Optimizations**: Response chunking for large datasets
 - **TypeScript Integration**: Full type safety with Zod schema validation
@@ -50,7 +50,8 @@ To set up this MCP server in Claude Desktop:
    npm install -g moneybird-mcp-server
    ```
 
-2. **Create or edit** the Claude Desktop configuration file (usually in `~/.config/claude-desktop/config.json`):
+2. **Create or edit** the Claude Desktop configuration file (usually in `~/Library/Application 
+Support/Claude/claude_desktop_config.json`) to include the MCP server configuration:
    ```json
    {
      "mcpServers": {
@@ -79,7 +80,8 @@ To set up this MCP server in Claude Desktop:
 
 ## Overview
 
-This server allows AI assistants to interact with your Moneybird accounting data using the Model Context Protocol. It provides various tools to:
+This server allows AI assistants to interact with your Moneybird accounting data using the Model Context Protocol. It
+provides various tools to:
 
 - List and retrieve contacts
 - View sales invoices
@@ -113,18 +115,20 @@ This server allows AI assistants to interact with your Moneybird accounting data
    ```
 
 4. Edit the `.env` file with your Moneybird API credentials:
-   - `MONEYBIRD_API_TOKEN`: Your Moneybird API token (generate at https://moneybird.com/user/applications)
-   - `MONEYBIRD_ADMINISTRATION_ID`: Your Moneybird administration ID (found in URL when logged in)
-   - `MCP_SERVER_PORT`: The port to run the MCP server on (default: 3000)
+    - `MONEYBIRD_API_TOKEN`: Your Moneybird API token (generate at https://moneybird.com/user/applications)
+    - `MONEYBIRD_ADMINISTRATION_ID`: Your Moneybird administration ID (found in URL when logged in)
+    - `MCP_SERVER_PORT`: The port to run the MCP server on (default: 3000)
 
 ## Running the Server
 
 For development:
+
 ```
 npm run dev
 ```
 
 For production:
+
 ```
 npm run build
 npm start
@@ -132,7 +136,8 @@ npm start
 
 ## Using with AI Assistants
 
-This MCP server is compatible with any AI assistant that supports the Model Context Protocol. Once running, you can connect it to your AI assistant by providing the server URL:
+This MCP server is compatible with any AI assistant that supports the Model Context Protocol. Once running, you can
+connect it to your AI assistant by providing the server URL:
 
 ```
 http://your-server-address:3000
@@ -154,7 +159,8 @@ The server provides the following tools:
 
 ## Security
 
-This server should be deployed with appropriate security measures, as it provides access to your Moneybird data. Consider:
+This server should be deployed with appropriate security measures, as it provides access to your Moneybird data.
+Consider:
 
 - Running behind a secure proxy
 - Implementing authentication for the MCP server
