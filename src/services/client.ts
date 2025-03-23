@@ -1,4 +1,4 @@
-import { MoneybirdClient } from './moneybird';
+import { MoneybirdClient } from './moneybird.js';
 import dotenv from 'dotenv';
 
 // Load environment variables

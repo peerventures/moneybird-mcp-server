@@ -2,13 +2,18 @@
   "name": "moneybird-mcp-server",
   "version": "1.0.0",
   "description": "moneybird mcp server",
-  "main": "index.js",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "moneybird-mcp-server": "dist/index.js"
+  },
   "scripts": {
     "test": "test",
-    "build": "tsc && chmod +x dist/*.js",
+    "build": "tsc && shx chmod +x dist/index.js",
     "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "start:ts": "ts-node src/index.ts"
+    "dev": "nodemon --exec node --loader ts-node/esm src/index.ts",
+    "start:ts": "node --loader ts-node/esm src/index.ts",
+    "prepare": "npm run build"
   },
   "author": "vanderheijden86@gmail.com",
   "license": "MIT",
@@ -18,10 +23,19 @@
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
+    "shx": "^0.3.4",
     "@types/dotenv": "^8.2.0",
     "@types/node": "^22.13.11",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

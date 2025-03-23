@@ -1,8 +1,8 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { MoneybirdClient } from './services/moneybird';
+import { MoneybirdClient } from './services/moneybird.js';
 import dotenv from 'dotenv';
 import { z } from 'zod';
-import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors';
+import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors.js';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,

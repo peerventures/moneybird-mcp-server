@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getClient } from '../services/client';
+import { getClient } from '../services/client.js';
 
 export const GetProjectSchema = z.object({
   id: z.string().describe('The ID of the project to retrieve'),

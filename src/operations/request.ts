@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getClient } from '../services/client';
+import { getClient } from '../services/client.js';
 
 export const GenericRequestSchema = z.object({
   method: z.enum(['get', 'post', 'put', 'delete']).describe('HTTP method for the request'),
