@@ -1,6 +1,81 @@
 # Moneybird MCP Server
 
-A Model Context Protocol (MCP) server that provides access to the Moneybird API.
+A Model Context Protocol (MCP) server that connects AI assistants like Claude to Moneybird accounting software via API.
+
+## Features
+
+- **Contact Management**: List, retrieve, filter, create, and update contacts
+  - Advanced filtering by creation date, update date, name, and more
+- **Financial Data**: Access sales invoices, financial accounts, and payments
+- **Business Operations**: Manage products, projects, and time entries
+- **Custom Requests**: Make custom API requests to Moneybird endpoints
+- **Interactive Assistant**: Preconfigured prompt for a Moneybird assistant
+
+## New Developments
+
+- **Enhanced Contact Filtering**: Filter contacts using Moneybird's advanced query syntax
+  - Filter by creation date: `created_after:2023-01-01 00:00:00 UTC`
+  - Filter by update date: `updated_after:2023-01-01 10:45:35 UTC`
+  - Filter by properties: `first_name:value`, etc.
+- **Improved Error Handling**: Better error messages and recovery
+- **Performance Optimizations**: Response chunking for large datasets
+- **TypeScript Integration**: Full type safety with Zod schema validation
+
+## Setup Instructions
+
+### Basic Setup
+
+1. **Install the package**:
+   ```bash
+   npm install -g moneybird-mcp-server
+   ```
+
+2. **Create a .env file** with your Moneybird credentials:
+   ```
+   MONEYBIRD_API_TOKEN=your_api_token
+   MONEYBIRD_ADMINISTRATION_ID=your_administration_id
+   ```
+
+3. **Run the server**:
+   ```bash
+   npx moneybird-mcp-server
+   ```
+
+### Claude Desktop Setup
+
+To set up this MCP server in Claude Desktop:
+
+1. **Install the package globally** if you haven't already:
+   ```bash
+   npm install -g moneybird-mcp-server
+   ```
+
+2. **Create or edit** the Claude Desktop configuration file (usually in `~/.config/claude-desktop/config.json`):
+   ```json
+   {
+     "mcpServers": {
+       "moneybird": {
+         "command": "npx",
+         "args": [
+           "-y",
+           "moneybird-mcp-server"
+         ],
+         "env": {
+           "MONEYBIRD_API_TOKEN": "your_api_token_here",
+           "MONEYBIRD_ADMINISTRATION_ID": "your_administration_id_here"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop** to apply the changes
+
+4. **Connect to the MCP server** by typing `/mcp moneybird` in the Claude chat input
+
+## Usage Examples
+
+### Basic Contact Listing
 
 ## Overview
 
