@@ -5,9 +5,11 @@ import { z } from 'zod';
 import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors';
 import {
   ListToolsRequestSchema,
-  CallToolRequestSchema
+  CallToolRequestSchema,
+  InitializeRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
 
 
 // Initialize environment variables
@@ -52,6 +54,24 @@ const server = new Server(
     },
   }
 );
+
+server.setRequestHandler(InitializeRequestSchema, async (request) => {
+  console.error("Received initialize request:", JSON.stringify(request));
+
+  // Return a proper initialize response
+  return {
+    serverInfo: {
+      name: 'moneybird-mcp-server',
+      version: '1.0.0',
+    },
+    capabilities: {
+      tools: {
+        list: true,
+        call: true,
+      },
+    },
+  };
+});
 
 // Format Moneybird errors for better readability
 function formatMoneybirdError(error: any): string {
@@ -126,7 +146,8 @@ interface MoneybirdInvoice {
 }
 
 // Register ListTools handler
-server.setRequestHandler(ListToolsRequestSchema, async () => {
+server.setRequestHandler(ListToolsRequestSchema, async (request) => {
+  console.error("Received ListTools request:", JSON.stringify(request));
   return {
     tools: [
       {
@@ -180,6 +201,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Register CallTool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  console.error("Received CallTool request:", JSON.stringify(request));
   try {
     if (!request.params.arguments) {
       throw new Error("Arguments are required");
