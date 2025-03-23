@@ -1,4 +1,4 @@
-import { Server } from '@modelcontextprotocol/sdk/server';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { MoneybirdClient } from './services/moneybird';
 import dotenv from 'dotenv';
 import { z } from 'zod';
@@ -33,14 +33,25 @@ const moneybirdClient = new MoneybirdClient(
 );
 
 // Create MCP server
-const server = new Server({
-  name: 'moneybird-mcp-server',
-  version: '1.0.0',
-  description: 'MCP server for interacting with Moneybird API',
-  logoUrl: 'https://www.moneybird.nl/assets/logo-d255782cccbc0c7ffe22fc3bbc9caa3ace8d639d0ecb58591c7987ad7c9fd9c4.svg',
-  contactEmail: process.env.CONTACT_EMAIL || 'example@example.com',
-  legalInfoUrl: 'https://www.moneybird.nl/terms',
-});
+const server = new Server(
+  {
+    name: 'moneybird-mcp-server',
+    version: '1.0.0',
+    description: 'MCP server for interacting with Moneybird API',
+    logoUrl:
+      'https://www.moneybird.nl/assets/logo-d255782cccbc0c7ffe22fc3bbc9caa3ace8d639d0ecb58591c7987ad7c9fd9c4.svg',
+    contactEmail: process.env.CONTACT_EMAIL || 'example@example.com',
+    legalInfoUrl: 'https://www.moneybird.nl/terms',
+  },
+  {
+    capabilities: {
+      tools: {
+        list: true,
+        call: true,
+      },
+    },
+  }
+);
 
 // Format Moneybird errors for better readability
 function formatMoneybirdError(error: any): string {
