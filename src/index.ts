@@ -12,7 +12,6 @@ import {
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 
-
 // Initialize environment variables
 dotenv.config();
 
@@ -41,20 +40,22 @@ const server = new Server(
     name: 'moneybird-mcp-server',
     version: '1.0.0',
     description: 'MCP server for interacting with Moneybird API',
-    logoUrl:
-      'https://www.moneybird.nl/assets/logo-d255782cccbc0c7ffe22fc3bbc9caa3ace8d639d0ecb58591c7987ad7c9fd9c4.svg',
-    contactEmail: process.env.CONTACT_EMAIL || 'example@example.com',
-    legalInfoUrl: 'https://www.moneybird.nl/terms',
+    contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
   },
   {
     capabilities: {
-      tools: {
-        list: true,
-        call: true,
-      },
+      tools: {},
     },
   }
 );
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
 
 server.setRequestHandler(InitializeRequestSchema, async (request) => {
   console.error("Received initialize request:", JSON.stringify(request));
@@ -77,14 +78,14 @@ server.setRequestHandler(InitializeRequestSchema, async (request) => {
 // Format Moneybird errors for better readability
 function formatMoneybirdError(error: any): string {
   let message = `Moneybird API Error: ${error.message}`;
-  
+
   if (error.response) {
     message += `\nStatus: ${error.response.status}`;
     if (error.response.data) {
       message += `\nDetails: ${JSON.stringify(error.response.data)}`;
     }
   }
-  
+
   if (error instanceof MoneybirdRateLimitError) {
     message = `Rate Limit Exceeded: ${error.message}`;
     if (error.resetAt) {
@@ -128,6 +129,7 @@ interface MoneybirdContact {
   lastname?: string;
   email?: string;
   phone?: string;
+
   [key: string]: any; // For other properties that might exist
 }
 
@@ -143,6 +145,7 @@ interface MoneybirdInvoice {
   total_price_excl_tax?: string | number;
   currency?: string;
   paid_at?: string;
+
   [key: string]: any; // For other properties that might exist
 }
 
@@ -212,7 +215,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_contacts": {
         const args = ListContactsSchema.parse(request.params.arguments);
         const contacts = await moneybirdClient.getContacts();
-        
+
         // Add type annotation here
         const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
           id: contact.id,
@@ -222,9 +225,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           email: contact.email,
           phone: contact.phone
         }));
-        
+
         return {
-          content: [{ type: "text", text: JSON.stringify(formattedContacts, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(formattedContacts, null, 2)}],
         };
       }
 
@@ -232,14 +235,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const args = GetContactSchema.parse(request.params.arguments);
         const contact = await moneybirdClient.getContact(args.contact_id);
         return {
-          content: [{ type: "text", text: JSON.stringify(contact, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(contact, null, 2)}],
         };
       }
 
       case "list_sales_invoices": {
         const args = ListSalesInvoicesSchema.parse(request.params.arguments);
         const invoices = await moneybirdClient.getSalesInvoices();
-        
+
         // Add type annotation here
         const formattedInvoices = invoices.map((invoice: MoneybirdInvoice) => ({
           id: invoice.id,
@@ -254,9 +257,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           currency: invoice.currency,
           paid_at: invoice.paid_at
         }));
-        
+
         return {
-          content: [{ type: "text", text: JSON.stringify(formattedInvoices, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(formattedInvoices, null, 2)}],
         };
       }
 
@@ -264,47 +267,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const args = GetSalesInvoiceSchema.parse(request.params.arguments);
         const invoice = await moneybirdClient.getSalesInvoice(args.invoice_id);
         return {
-          content: [{ type: "text", text: JSON.stringify(invoice, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(invoice, null, 2)}],
         };
       }
 
       case "list_financial_accounts": {
         const accounts = await moneybirdClient.getFinancialAccounts();
         return {
-          content: [{ type: "text", text: JSON.stringify(accounts, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(accounts, null, 2)}],
         };
       }
 
       case "list_products": {
         const products = await moneybirdClient.getProducts();
         return {
-          content: [{ type: "text", text: JSON.stringify(products, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(products, null, 2)}],
         };
       }
 
       case "list_projects": {
         const projects = await moneybirdClient.getProjects();
         return {
-          content: [{ type: "text", text: JSON.stringify(projects, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(projects, null, 2)}],
         };
       }
 
       case "list_time_entries": {
         const timeEntries = await moneybirdClient.getTimeEntries();
         return {
-          content: [{ type: "text", text: JSON.stringify(timeEntries, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(timeEntries, null, 2)}],
         };
       }
 
       case "moneybird_request": {
         const args = MoneybirdRequestSchema.parse(request.params.arguments);
         const result = await moneybirdClient.request(
-          args.method, 
-          args.path, 
+          args.method,
+          args.path,
           args.data
         );
         return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          content: [{type: "text", text: JSON.stringify(result, null, 2)}],
         };
       }
 
@@ -324,12 +327,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start the server
 async function runServer() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Moneybird MCP Server running on stdio");
+  try {
+    const transport = new StdioServerTransport();
+    console.error("Starting Moneybird MCP Server...");
+    await server.connect(transport);
+    console.error("Moneybird MCP Server v0.0.1 running on stdio");
+
+    // Keep the Node.js process alive with a never-resolving promise
+    return new Promise(() => {
+      // This promise intentionally never resolves
+      // It keeps the Node.js event loop active
+
+      // Add signal handlers to gracefully exit
+      process.on('SIGINT', () => {
+        console.error("Server shutting down...");
+        process.exit(0);
+      });
+
+      process.on('SIGTERM', () => {
+        console.error("Server shutting down...");
+        process.exit(0);
+      });
+    });
+  } catch (error) {
+    console.error("Error starting server:", error);
+    process.exit(1);
+  }
 }
 
+// Keep this line as is - it calls your modified runServer function
 runServer().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);
-}); 
+});
