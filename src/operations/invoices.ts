@@ -37,6 +37,17 @@ export const CreateInvoiceSchema = z.object({
   send_method: z.enum(['hand', 'email', 'post']).optional().describe('How to send the invoice'),
 });
 
+// Export the interface derived from the schema
+export type MoneybirdInvoice = z.infer<typeof CreateInvoiceSchema> & {
+  id: string;
+  invoice_id?: string;
+  state?: string;
+  total_price_incl_tax?: string | number;
+  total_price_excl_tax?: string | number; 
+  paid_at?: string;
+  [key: string]: any;
+};
+
 export const SendInvoiceSchema = GetInvoiceSchema.extend({
   delivery_method: z.enum(['email', 'simpler_invoicing', 'manual']).describe('How to deliver the invoice'),
   email_address: z.string().email().optional().describe('Email address to send the invoice to (if delivery_method is email)'),

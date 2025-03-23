@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors.js';
 import { createInterface } from 'readline';
 import { VERSION } from './common/version.js';
+import { MoneybirdContact } from './operations/contacts.js';
+import { MoneybirdInvoice } from './operations/invoices.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -59,32 +61,6 @@ function formatMoneybirdError(error: any): string {
   }
 
   return message;
-}
-
-// Define interfaces for Moneybird data types
-interface MoneybirdContact {
-  id: string;
-  company_name?: string;
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-  phone?: string;
-  [key: string]: any;
-}
-
-interface MoneybirdInvoice {
-  id: string;
-  invoice_id?: string;
-  contact_id?: string;
-  reference?: string;
-  state?: string;
-  date?: string;
-  due_date?: string;
-  total_price_incl_tax?: string | number;
-  total_price_excl_tax?: string | number;
-  currency?: string;
-  paid_at?: string;
-  [key: string]: any;
 }
 
 // Debug JSON-RPC messages
@@ -363,7 +339,19 @@ server.tool(
   async (params: { method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any }) => {
     try {
       console.error(`Making ${params.method.toUpperCase()} request to ${params.path}`);
-      const result = await moneybirdClient.request(params.method, params.path, params.data);
+      
+      // Parse data if it's a JSON string
+      let processedData = params.data;
+      if (typeof params.data === 'string') {
+        try {
+          processedData = JSON.parse(params.data);
+        } catch (e) {
+          // If it's not valid JSON, keep the original
+          console.error('Warning: Could not parse data as JSON, using as-is');
+        }
+      }
+      
+      const result = await moneybirdClient.request(params.method, params.path, processedData);
       console.error('Request completed successfully');
       
       return {
@@ -371,8 +359,14 @@ server.tool(
       };
     } catch (error: any) {
       console.error('Error making API request:', error);
+      // Include more error details if available
+      let errorMessage = `API request failed: ${error.message}`;
+      if (error.response && error.response.data) {
+        errorMessage += `\nDetails: ${JSON.stringify(error.response.data)}`;
+      }
+      
       return {
-        content: [{ type: "text", text: `API request failed: ${error.message}` }],
+        content: [{ type: "text", text: errorMessage }],
         isError: true
       };
     }

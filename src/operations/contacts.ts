@@ -34,6 +34,12 @@ export const UpdateContactSchema = GetContactSchema.extend({
   ...CreateContactSchema.shape,
 });
 
+// Export the interface derived from the schema
+export type MoneybirdContact = z.infer<typeof CreateContactSchema> & {
+  id: string;
+  [key: string]: any;
+};
+
 export async function getContact(id: string) {
   const client = getClient();
   return await client.getContact(id);

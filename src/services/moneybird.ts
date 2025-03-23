@@ -63,11 +63,12 @@ export class MoneybirdClient {
 
   // Generic request method
   async request(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any) {
-    const fullPath = `/${this.administrationId}/${path}`;
+    // Remove leading slash if present to avoid double slashes
+    const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
     
     const response = await this.client.request({
       method,
-      url: fullPath,
+      url: `/${this.administrationId}/${normalizedPath}`,
       data
     });
     
