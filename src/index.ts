@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors.js';
 import { createInterface } from 'readline';
+import { VERSION } from './common/version.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -416,6 +417,9 @@ let serverInitialized = false;
 // Start the server
 async function runServer() {
   try {
+    // Log version information on startup
+    console.error(`Starting Moneybird MCP Server v${VERSION.toString()}...`);
+    
     // Set up a global timeout to detect if the server is hanging
     const globalTimeout = setTimeout(() => {
       if (!serverInitialized) {
@@ -431,10 +435,9 @@ async function runServer() {
     setupStdioDebugger();
     
     // Use console.error for pre-connection logging
-    console.error("Starting Moneybird MCP Server...");
+    console.error("Creating StdioServerTransport...");
     
     // Create transport with debugging
-    console.error("Creating StdioServerTransport...");
     const transport = new StdioServerTransport();
     
     // Set a timeout to detect hangs during connection
