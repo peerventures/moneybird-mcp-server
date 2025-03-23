@@ -8,7 +8,7 @@
 export const VERSION = {
   major: 0,
   minor: 6,
-  patch: 3,
+  patch: 4,
   toString: function() {
     return `${this.major}.${this.minor}.${this.patch}`;
   }

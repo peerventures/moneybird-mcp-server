@@ -20,4 +20,4 @@ git tag -a "v$VERSION" -m "Release v$VERSION"
 echo "🏷️ Created tag v$VERSION"
 
 # Push the tag to origin (optional - uncomment if you want automatic pushing)
-# git push origin v$VERSION
+git push origin v$VERSION
