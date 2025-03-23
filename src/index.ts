@@ -38,7 +38,7 @@ const moneybirdClient = new MoneybirdClient(
   process.env.MONEYBIRD_ADMINISTRATION_ID!
 );
 
-// Create MCP server
+// Create MCP server with longer timeouts
 const server = new Server({
   name: 'moneybird-mcp-server',
   version: `v${VERSION.toString()}`,
@@ -108,6 +108,42 @@ function setupStdioDebugger() {
     }
     return originalStdoutWrite.call(this, chunk, encoding, callback);
   };
+}
+
+// Add this function to the top of your file
+function progressUpdates(operation: string): NodeJS.Timeout {
+  const startTime = Date.now();
+  return setInterval(() => {
+    console.error(`Still working on ${operation}... (${Math.floor((Date.now() - startTime) / 1000)}s elapsed)`);
+  }, 2000); // Send progress message every 2 seconds
+}
+
+// Add a utility function to chunk large responses
+function chunkResponse(data: any, maxSize: number = 100): any[] {
+  if (!Array.isArray(data) || data.length <= maxSize) {
+    return [data];
+  }
+
+  const chunks = [];
+  for (let i = 0; i < data.length; i += maxSize) {
+    chunks.push(data.slice(i, i + maxSize));
+  }
+  return chunks;
+}
+
+// At the top level of your file
+let lastSuccessfulOperation = Date.now();
+let consecutiveErrors = 0;
+
+// Add this function
+function updateHealthMetrics(success: boolean) {
+  if (success) {
+    lastSuccessfulOperation = Date.now();
+    consecutiveErrors = 0;
+  } else {
+    consecutiveErrors++;
+    console.error(`Health metrics: ${consecutiveErrors} consecutive errors`);
+  }
 }
 
 // Define available tools handler (resources/list endpoint)
@@ -243,22 +279,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case "list_contacts": {
         console.error('Fetching contacts from Moneybird...');
-        const contacts = await moneybirdClient.getContacts();
-        console.error(`Successfully retrieved ${contacts.length} contacts`);
+        const progress = progressUpdates('fetching contacts');
 
-        // Format contacts for better readability
-        const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
-          id: contact.id,
-          company_name: contact.company_name,
-          firstname: contact.firstname,
-          lastname: contact.lastname,
-          email: contact.email,
-          phone: contact.phone
-        }));
+        try {
+          const contacts = await moneybirdClient.getContacts();
+          clearInterval(progress);
+          console.error(`Successfully retrieved ${contacts.length} contacts`);
 
-        return {
-          content: [{type: "text", text: JSON.stringify(formattedContacts, null, 2)}]
-        };
+          // Format contacts for better readability
+          const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
+            id: contact.id,
+            company_name: contact.company_name,
+            firstname: contact.firstname,
+            lastname: contact.lastname,
+            email: contact.email,
+            phone: contact.phone
+          }));
+
+          // Chunk large responses
+          const chunks = chunkResponse(formattedContacts, 50);
+          if (chunks.length > 1) {
+            return {
+              content: [{
+                type: "text",
+                text: `Retrieved ${formattedContacts.length} contacts. Showing first ${chunks[0].length}:\n\n${JSON.stringify(chunks[0], null, 2)}\n\n(Response truncated for stability. Use pagination to see more.)`
+              }]
+            };
+          }
+
+          return {
+            content: [{type: "text", text: JSON.stringify(formattedContacts, null, 2)}]
+          };
+        } catch (error) {
+          clearInterval(progress);
+          throw error;
+        }
       }
 
       case "get_contact": {
@@ -500,6 +555,15 @@ async function runServer() {
       console.error("Server shutting down...");
       process.exit(0);
     });
+
+    // Add a periodic health check
+    const healthCheck = setInterval(() => {
+      const idle = Date.now() - lastSuccessfulOperation;
+      if (idle > 5 * 60 * 1000) { // 5 minutes
+        console.error("Warning: No successful operations in last 5 minutes");
+      }
+    }, 60 * 1000);
+    healthCheck.unref(); // Don't prevent Node from exiting
   } catch (error) {
     // Use console.error for errors during startup
     console.error("Error starting server:", error);

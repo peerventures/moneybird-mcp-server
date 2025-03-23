@@ -18,61 +18,79 @@ export class MoneybirdClient {
 
   // Financial Accounts
   async getFinancialAccounts() {
-    const response = await this.client.get(`/${this.administrationId}/financial_accounts`);
-    return response.data;
+    return this.request('get', 'financial_accounts');
   }
 
   // Contacts
   async getContacts() {
-    const response = await this.client.get(`/${this.administrationId}/contacts`);
-    return response.data;
+    return this.request('get', 'contacts');
   }
 
   async getContact(id: string) {
-    const response = await this.client.get(`/${this.administrationId}/contacts/${id}`);
-    return response.data;
+    return this.request('get', `contacts/${id}`);
   }
 
   // Sales Invoices
   async getSalesInvoices() {
-    const response = await this.client.get(`/${this.administrationId}/sales_invoices`);
-    return response.data;
+    return this.request('get', 'sales_invoices');
   }
 
   async getSalesInvoice(id: string) {
-    const response = await this.client.get(`/${this.administrationId}/sales_invoices/${id}`);
-    return response.data;
+    return this.request('get', `sales_invoices/${id}`);
   }
 
   // Products
   async getProducts() {
-    const response = await this.client.get(`/${this.administrationId}/products`);
-    return response.data;
+    return this.request('get', 'products');
   }
 
   // Projects
   async getProjects() {
-    const response = await this.client.get(`/${this.administrationId}/projects`);
-    return response.data;
+    return this.request('get', 'projects');
   }
 
   // Time entries
   async getTimeEntries() {
-    const response = await this.client.get(`/${this.administrationId}/time_entries`);
-    return response.data;
+    return this.request('get', 'time_entries');
   }
 
-  // Generic request method
-  async request(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any) {
+  // Generic request method with retry logic
+  async request(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any, retries = 2): Promise<any> {
     // Remove leading slash if present to avoid double slashes
     const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
     
-    const response = await this.client.request({
-      method,
-      url: `/${this.administrationId}/${normalizedPath}`,
-      data
-    });
-    
-    return response.data;
+    try {
+      console.error(`Attempting ${method.toUpperCase()} request to ${normalizedPath}`);
+      const response = await this.client.request({
+        method,
+        url: `/${this.administrationId}/${normalizedPath}`,
+        data
+      });
+      
+      console.error(`Request to ${normalizedPath} completed successfully`);
+      return response.data;
+    } catch (error: any) {
+      // Don't retry client errors (4xx) except for 429 (rate limit)
+      const statusCode = error.response?.status;
+      if (statusCode && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+        console.error(`Client error (${statusCode}) for ${normalizedPath}, not retrying`);
+        throw error;
+      }
+      
+      if (retries > 0) {
+        // Exponential backoff: 1000ms, 2000ms, 4000ms, etc.
+        const delay = 1000 * Math.pow(2, 2 - retries);
+        console.error(`Request to ${normalizedPath} failed, retrying in ${delay}ms... (${retries} attempts left)`);
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Retry the request with one less retry attempt
+        return this.request(method, path, data, retries - 1);
+      }
+      
+      console.error(`Request to ${normalizedPath} failed after all retry attempts`);
+      throw error;
+    }
   }
 } 
