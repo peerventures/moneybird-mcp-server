@@ -34,11 +34,9 @@ const moneybirdClient = new MoneybirdClient(
 // Create MCP server
 const server = new McpServer({
   name: 'moneybird-mcp-server',
-  version: '1.0.0',
+  version: `v${VERSION.toString()}`,
   description: 'MCP server for interacting with Moneybird API',
-  logoUrl: 'https://www.moneybird.nl/assets/logo-d255782cccbc0c7ffe22fc3bbc9caa3ace8d639d0ecb58591c7987ad7c9fd9c4.svg',
   contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
-  legalInfoUrl: 'https://www.moneybird.nl/terms',
   autoImplementResourcesList: true,
 });
 
