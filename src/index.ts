@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { MoneybirdClient } from './services/moneybird.js';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import { isMoneybirdError, MoneybirdRateLimitError } from './common/errors.js';
-import {
-  ListToolsRequestSchema,
-  CallToolRequestSchema,
-  InitializeRequestSchema
-} from '@modelcontextprotocol/sdk/types.js';
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createInterface } from 'readline';
-
 
 // Initialize environment variables
 dotenv.config();
@@ -21,21 +15,6 @@ const requiredEnvVars = [
   'MONEYBIRD_API_TOKEN',
   'MONEYBIRD_ADMINISTRATION_ID'
 ];
-
-// Create MCP server
-const server = new Server(
-  {
-    name: 'moneybird-mcp-server',
-    version: '1.0.0',
-    description: 'MCP server for interacting with Moneybird API',
-    contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
-);
 
 // Check for required environment variables
 for (const envVar of requiredEnvVars) {
@@ -51,60 +30,15 @@ const moneybirdClient = new MoneybirdClient(
   process.env.MONEYBIRD_ADMINISTRATION_ID!
 );
 
-process.on('uncaughtException', (error) => {
-  // Use safe logging that works regardless of server state
-  if (server && typeof server.sendLoggingMessage === 'function') {
-    server.sendLoggingMessage({
-      level: "error",
-      data: `Uncaught exception: ${error}`,
-    });
-  } else {
-    console.error('Uncaught exception:', error);
-  }
-});
-
-process.on('unhandledRejection', (reason) => {
-  // Use safe logging that works regardless of server state
-  if (server && typeof server.sendLoggingMessage === 'function') {
-    server.sendLoggingMessage({
-      level: "error",
-      data: `Unhandled rejection: ${reason}`,
-    });
-  } else {
-    console.error('Unhandled rejection:', reason);
-  }
-});
-
-server.setRequestHandler(InitializeRequestSchema, async (request) => {
-  // Log the request with both methods to ensure visibility
-  console.error("Received initialize request:", JSON.stringify(request));
-  
-  try {
-    server.sendLoggingMessage({
-      level: "info",
-      data: `Received initialize request: ${JSON.stringify(request)}`,
-    });
-
-    // Return a proper initialize response with complete information
-    console.error("Sending initialize response");
-    return {
-      serverInfo: {
-        name: 'moneybird-mcp-server',
-        version: '1.0.0',
-        description: 'MCP server for interacting with Moneybird API',
-        contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
-      },
-      capabilities: {
-        tools: {
-          list: true,
-          call: true,
-        },
-      },
-    };
-  } catch (error) {
-    console.error("Error in initialize handler:", error);
-    throw error;
-  }
+// Create MCP server
+const server = new McpServer({
+  name: 'moneybird-mcp-server',
+  version: '1.0.0',
+  description: 'MCP server for interacting with Moneybird API',
+  logoUrl: 'https://www.moneybird.nl/assets/logo-d255782cccbc0c7ffe22fc3bbc9caa3ace8d639d0ecb58591c7987ad7c9fd9c4.svg',
+  contactEmail: process.env.CONTACT_EMAIL || 'vanderheijden86@gmail.com',
+  legalInfoUrl: 'https://www.moneybird.nl/terms',
+  autoImplementResourcesList: true,
 });
 
 // Format Moneybird errors for better readability
@@ -128,32 +62,7 @@ function formatMoneybirdError(error: any): string {
   return message;
 }
 
-// Define tool schemas
-const ListContactsSchema = z.object({
-  page: z.number().optional().describe('Page number for pagination'),
-  perPage: z.number().optional().describe('Items per page')
-});
-
-const GetContactSchema = z.object({
-  contact_id: z.string().describe('The ID of the contact to retrieve')
-});
-
-const ListSalesInvoicesSchema = z.object({
-  page: z.number().optional().describe('Page number for pagination'),
-  perPage: z.number().optional().describe('Items per page')
-});
-
-const GetSalesInvoiceSchema = z.object({
-  invoice_id: z.string().describe('The ID of the sales invoice to retrieve')
-});
-
-const MoneybirdRequestSchema = z.object({
-  method: z.enum(['get', 'post', 'put', 'delete']).describe('HTTP method for the request'),
-  path: z.string().describe('API path (without administration ID prefix)'),
-  data: z.any().optional().describe('Request data for POST and PUT requests (optional)')
-});
-
-// Add these interfaces at the top of your file
+// Define interfaces for Moneybird data types
 interface MoneybirdContact {
   id: string;
   company_name?: string;
@@ -161,8 +70,7 @@ interface MoneybirdContact {
   lastname?: string;
   email?: string;
   phone?: string;
-
-  [key: string]: any; // For other properties that might exist
+  [key: string]: any;
 }
 
 interface MoneybirdInvoice {
@@ -177,193 +85,8 @@ interface MoneybirdInvoice {
   total_price_excl_tax?: string | number;
   currency?: string;
   paid_at?: string;
-
-  [key: string]: any; // For other properties that might exist
+  [key: string]: any;
 }
-
-// Register ListTools handler
-server.setRequestHandler(ListToolsRequestSchema, async (request) => {
-  server.sendLoggingMessage({
-    level: "info",
-    data: `Received ListTools request: ${JSON.stringify(request)}`,
-  });
-  
-  return {
-    tools: [
-      {
-        name: "list_contacts",
-        description: "List contacts from Moneybird",
-        inputSchema: ListContactsSchema,
-      },
-      {
-        name: "get_contact",
-        description: "Get a specific contact by ID",
-        inputSchema: GetContactSchema,
-      },
-      {
-        name: "list_sales_invoices",
-        description: "List sales invoices from Moneybird",
-        inputSchema: ListSalesInvoicesSchema,
-      },
-      {
-        name: "get_sales_invoice",
-        description: "Get a specific sales invoice by ID",
-        inputSchema: GetSalesInvoiceSchema,
-      },
-      {
-        name: "list_financial_accounts",
-        description: "List financial accounts from Moneybird",
-        inputSchema: z.object({}),
-      },
-      {
-        name: "list_products",
-        description: "List products from Moneybird",
-        inputSchema: z.object({}),
-      },
-      {
-        name: "list_projects",
-        description: "List projects from Moneybird",
-        inputSchema: z.object({}),
-      },
-      {
-        name: "list_time_entries",
-        description: "List time entries from Moneybird",
-        inputSchema: z.object({}),
-      },
-      {
-        name: "moneybird_request",
-        description: "Make a custom request to the Moneybird API",
-        inputSchema: MoneybirdRequestSchema,
-      }
-    ],
-  };
-});
-
-// Register CallTool handler
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  server.sendLoggingMessage({
-    level: "info",
-    data: `Received CallTool request: ${JSON.stringify(request)}`,
-  });
-  
-  try {
-    if (!request.params.arguments) {
-      throw new Error("Arguments are required");
-    }
-
-    switch (request.params.name) {
-      case "list_contacts": {
-        const args = ListContactsSchema.parse(request.params.arguments);
-        const contacts = await moneybirdClient.getContacts();
-
-        // Add type annotation here
-        const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
-          id: contact.id,
-          company_name: contact.company_name,
-          firstname: contact.firstname,
-          lastname: contact.lastname,
-          email: contact.email,
-          phone: contact.phone
-        }));
-
-        return {
-          content: [{type: "text", text: JSON.stringify(formattedContacts, null, 2)}],
-        };
-      }
-
-      case "get_contact": {
-        const args = GetContactSchema.parse(request.params.arguments);
-        const contact = await moneybirdClient.getContact(args.contact_id);
-        return {
-          content: [{type: "text", text: JSON.stringify(contact, null, 2)}],
-        };
-      }
-
-      case "list_sales_invoices": {
-        const args = ListSalesInvoicesSchema.parse(request.params.arguments);
-        const invoices = await moneybirdClient.getSalesInvoices();
-
-        // Add type annotation here
-        const formattedInvoices = invoices.map((invoice: MoneybirdInvoice) => ({
-          id: invoice.id,
-          invoice_id: invoice.invoice_id,
-          contact_id: invoice.contact_id,
-          reference: invoice.reference,
-          state: invoice.state,
-          date: invoice.date,
-          due_date: invoice.due_date,
-          total_price_incl_tax: invoice.total_price_incl_tax,
-          total_price_excl_tax: invoice.total_price_excl_tax,
-          currency: invoice.currency,
-          paid_at: invoice.paid_at
-        }));
-
-        return {
-          content: [{type: "text", text: JSON.stringify(formattedInvoices, null, 2)}],
-        };
-      }
-
-      case "get_sales_invoice": {
-        const args = GetSalesInvoiceSchema.parse(request.params.arguments);
-        const invoice = await moneybirdClient.getSalesInvoice(args.invoice_id);
-        return {
-          content: [{type: "text", text: JSON.stringify(invoice, null, 2)}],
-        };
-      }
-
-      case "list_financial_accounts": {
-        const accounts = await moneybirdClient.getFinancialAccounts();
-        return {
-          content: [{type: "text", text: JSON.stringify(accounts, null, 2)}],
-        };
-      }
-
-      case "list_products": {
-        const products = await moneybirdClient.getProducts();
-        return {
-          content: [{type: "text", text: JSON.stringify(products, null, 2)}],
-        };
-      }
-
-      case "list_projects": {
-        const projects = await moneybirdClient.getProjects();
-        return {
-          content: [{type: "text", text: JSON.stringify(projects, null, 2)}],
-        };
-      }
-
-      case "list_time_entries": {
-        const timeEntries = await moneybirdClient.getTimeEntries();
-        return {
-          content: [{type: "text", text: JSON.stringify(timeEntries, null, 2)}],
-        };
-      }
-
-      case "moneybird_request": {
-        const args = MoneybirdRequestSchema.parse(request.params.arguments);
-        const result = await moneybirdClient.request(
-          args.method,
-          args.path,
-          args.data
-        );
-        return {
-          content: [{type: "text", text: JSON.stringify(result, null, 2)}],
-        };
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${request.params.name}`);
-    }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      throw new Error(`Invalid input: ${JSON.stringify(error.errors)}`);
-    }
-    if (isMoneybirdError(error)) {
-      throw new Error(formatMoneybirdError(error));
-    }
-    throw error;
-  }
-});
 
 // Debug JSON-RPC messages
 function setupStdioDebugger() {
@@ -377,7 +100,7 @@ function setupStdioDebugger() {
     try {
       // Only log if it looks like JSON
       if (line.trim().startsWith('{')) {
-        const data = JSON.parse(line);
+        JSON.parse(line);
         console.error(`RECEIVED: ${line}`);
       }
     } catch (e) {
@@ -401,6 +124,290 @@ function setupStdioDebugger() {
     return originalStdoutWrite.call(this, chunk, encoding, callback);
   };
 }
+
+// List contacts tool
+server.tool(
+  'list_contacts',
+  'List all contacts from your Moneybird account',
+  {
+    page: z.number().optional().describe('Page number for pagination'),
+    perPage: z.number().optional().describe('Items per page')
+  },
+  async (params: { page?: number, perPage?: number }) => {
+    try {
+      console.error('Fetching contacts from Moneybird...');
+      const contacts = await moneybirdClient.getContacts();
+      console.error(`Successfully retrieved ${contacts.length} contacts`);
+
+      // Format contacts for better readability
+      const formattedContacts = contacts.map((contact: MoneybirdContact) => ({
+        id: contact.id,
+        company_name: contact.company_name,
+        firstname: contact.firstname,
+        lastname: contact.lastname,
+        email: contact.email,
+        phone: contact.phone
+      }));
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(formattedContacts, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching contacts:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch contacts: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Get specific contact tool
+server.tool(
+  'get_contact',
+  'Get a specific contact by ID from your Moneybird account',
+  {
+    contact_id: z.string().describe('The ID of the contact to retrieve')
+  },
+  async (params: { contact_id: string }) => {
+    try {
+      console.error(`Fetching contact with ID: ${params.contact_id}`);
+      const contact = await moneybirdClient.getContact(params.contact_id);
+      console.error('Successfully retrieved contact');
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(contact, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching contact:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch contact: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// List sales invoices tool
+server.tool(
+  'list_sales_invoices',
+  'List all sales invoices from your Moneybird account',
+  {
+    page: z.number().optional().describe('Page number for pagination'),
+    perPage: z.number().optional().describe('Items per page')
+  },
+  async (params: { page?: number, perPage?: number }) => {
+    try {
+      console.error('Fetching sales invoices from Moneybird...');
+      const invoices = await moneybirdClient.getSalesInvoices();
+      console.error(`Successfully retrieved ${invoices.length} invoices`);
+
+      // Format invoices for better readability
+      const formattedInvoices = invoices.map((invoice: MoneybirdInvoice) => ({
+        id: invoice.id,
+        invoice_id: invoice.invoice_id,
+        contact_id: invoice.contact_id,
+        reference: invoice.reference,
+        state: invoice.state,
+        date: invoice.date,
+        due_date: invoice.due_date,
+        total_price_incl_tax: invoice.total_price_incl_tax,
+        total_price_excl_tax: invoice.total_price_excl_tax,
+        currency: invoice.currency,
+        paid_at: invoice.paid_at
+      }));
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(formattedInvoices, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching sales invoices:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch sales invoices: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Get specific sales invoice tool
+server.tool(
+  'get_sales_invoice',
+  'Get a specific sales invoice by ID from your Moneybird account',
+  {
+    invoice_id: z.string().describe('The ID of the sales invoice to retrieve')
+  },
+  async (params: { invoice_id: string }) => {
+    try {
+      console.error(`Fetching sales invoice with ID: ${params.invoice_id}`);
+      const invoice = await moneybirdClient.getSalesInvoice(params.invoice_id);
+      console.error('Successfully retrieved invoice');
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(invoice, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching sales invoice:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch sales invoice: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// List financial accounts tool
+server.tool(
+  'list_financial_accounts',
+  'List all financial accounts from your Moneybird account',
+  {},
+  async () => {
+    try {
+      console.error('Fetching financial accounts from Moneybird...');
+      const accounts = await moneybirdClient.getFinancialAccounts();
+      console.error(`Successfully retrieved ${accounts.length} accounts`);
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(accounts, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching financial accounts:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch financial accounts: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// List products tool
+server.tool(
+  'list_products',
+  'List all products from your Moneybird account',
+  {},
+  async () => {
+    try {
+      console.error('Fetching products from Moneybird...');
+      const products = await moneybirdClient.getProducts();
+      console.error(`Successfully retrieved ${products.length} products`);
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(products, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching products:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch products: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// List projects tool
+server.tool(
+  'list_projects',
+  'List all projects from your Moneybird account',
+  {},
+  async () => {
+    try {
+      console.error('Fetching projects from Moneybird...');
+      const projects = await moneybirdClient.getProjects();
+      console.error(`Successfully retrieved ${projects.length} projects`);
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(projects, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching projects:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch projects: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// List time entries tool
+server.tool(
+  'list_time_entries',
+  'List all time entries from your Moneybird account',
+  {},
+  async () => {
+    try {
+      console.error('Fetching time entries from Moneybird...');
+      const timeEntries = await moneybirdClient.getTimeEntries();
+      console.error(`Successfully retrieved ${timeEntries.length} time entries`);
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(timeEntries, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error fetching time entries:', error);
+      return {
+        content: [{ type: "text", text: `Failed to fetch time entries: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Generic Moneybird request tool
+server.tool(
+  'moneybird_request',
+  'Make a custom request to the Moneybird API',
+  {
+    method: z.enum(['get', 'post', 'put', 'delete']).describe('HTTP method for the request'),
+    path: z.string().describe('API path (without administration ID prefix)'),
+    data: z.any().optional().describe('Request data for POST and PUT requests (optional)')
+  },
+  async (params: { method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any }) => {
+    try {
+      console.error(`Making ${params.method.toUpperCase()} request to ${params.path}`);
+      const result = await moneybirdClient.request(params.method, params.path, params.data);
+      console.error('Request completed successfully');
+      
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+      };
+    } catch (error: any) {
+      console.error('Error making API request:', error);
+      return {
+        content: [{ type: "text", text: `API request failed: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+);
+
+// Add a helpful prompt as a tool
+server.tool(
+  'moneybird_assistant',
+  'Get assistance with using the Moneybird MCP server',
+  {},
+  async () => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `You are a financial assistant that helps users with their Moneybird accounting software.
+You can help them find information about contacts, invoices, financial accounts, and more.
+Always be helpful, accurate, and professional.
+
+Some things you can do:
+- Look up contact information
+- Find invoice details
+- Check financial accounts
+- List products and services
+- View project information
+- Access time entries
+
+When users ask for financial information, try to be as specific as possible in your responses.`
+        }
+      ]
+    };
+  }
+);
 
 // Global timeout to detect hanging server (60 seconds)
 const GLOBAL_TIMEOUT_MS = 60000;
@@ -443,37 +450,22 @@ async function runServer() {
     
     console.error("Server successfully connected to transport");
     
-    // Now that the server is connected, we can use sendLoggingMessage
-    server.sendLoggingMessage({
-      level: "info",
-      data: "Moneybird MCP Server v0.0.2 running on stdio",
-    });
-
     // Mark server as initialized
     serverInitialized = true;
     
-    // Keep the Node.js process alive with a never-resolving promise
-    return new Promise(() => {
-      console.error("Server is now running and waiting for requests");
-      
-      // Add signal handlers to gracefully exit
-      process.on('SIGINT', () => {
-        console.error("Received SIGINT signal");
-        server.sendLoggingMessage({
-          level: "info",
-          data: "Server shutting down...",
-        });
-        process.exit(0);
-      });
+    console.error("Server is now running and waiting for requests");
+    
+    // Add signal handlers to gracefully exit
+    process.on('SIGINT', () => {
+      console.error("Received SIGINT signal");
+      console.error("Server shutting down...");
+      process.exit(0);
+    });
 
-      process.on('SIGTERM', () => {
-        console.error("Received SIGTERM signal");
-        server.sendLoggingMessage({
-          level: "info",
-          data: "Server shutting down...",
-        });
-        process.exit(0);
-      });
+    process.on('SIGTERM', () => {
+      console.error("Received SIGTERM signal");
+      console.error("Server shutting down...");
+      process.exit(0);
     });
   } catch (error) {
     // Use console.error for errors during startup
@@ -482,7 +474,18 @@ async function runServer() {
   }
 }
 
-// Keep this line as is - it calls your modified runServer function
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  // Use safe logging that works regardless of server state
+  console.error('Uncaught exception:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  // Use safe logging that works regardless of server state
+  console.error('Unhandled rejection:', reason);
+});
+
+// Start the server
 runServer().catch((error) => {
   // We can't use server.sendLoggingMessage here because if we get an error before 
   // the server is properly initialized, it won't be available
