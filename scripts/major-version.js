@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 import fs from 'fs';
-import { execSync } from 'child_process';
 import path from 'path';
+import { execSync } from 'child_process';
+import readline from 'readline';
 
-// Get the most recent commit message
-function getLatestCommitMessage() {
-  try {
-    return execSync('git log -1 --pretty=%B').toString().trim();
-  } catch (error) {
-    console.error('Error getting commit message:', error);
-    return '';
-  }
-}
+// Create interface for user input
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 // Parse current version from version.ts
 function getCurrentVersion() {
@@ -61,44 +58,50 @@ export const VERSION = {
   }
 }
 
-// Main function
-function main() {
-  const commitMsg = getLatestCommitMessage();
-  const currentVersion = getCurrentVersion();
-  let newVersion = { ...currentVersion };
-  
-  // Standard semver rules:
-  // - fix: increment patch version (backwards-compatible bug fixes)
-  // - feat: increment minor version (backwards-compatible features)
-  // - major: manual upgrade only (breaking changes)
-  if (commitMsg.toLowerCase().startsWith('feat:')) {
-    newVersion.minor += 1;
-    newVersion.patch = 0;
-    console.log('Feature detected: incrementing MINOR version');
-  } else if (commitMsg.toLowerCase().startsWith('fix:')) {
-    newVersion.patch += 1;
-    console.log('Fix detected: incrementing PATCH version');
-  } else if (!commitMsg.startsWith('chore: version')) { // Avoid recursion on version commits
-    // Default increment for other types of commits
-    newVersion.patch += 1;
-    console.log('Other commit: incrementing PATCH version');
-  } else {
-    console.log('Version commit detected, not incrementing version');
-    return; // Exit without updating version
-  }
-  
-  updateVersionFile(newVersion);
-  
-  // Also update package.json version
+// Update package.json
+function updatePackageJson(version) {
   try {
     const packagePath = path.resolve('package.json');
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-    packageJson.version = `${newVersion.major}.${newVersion.minor}.${newVersion.patch}`;
+    packageJson.version = `${version.major}.${version.minor}.${version.patch}`;
     fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
     console.log(`Updated package.json version to ${packageJson.version}`);
   } catch (error) {
     console.error('Error updating package.json:', error);
   }
+}
+
+// Main function for major version upgrade
+function main() {
+  const currentVersion = getCurrentVersion();
+  console.log(`Current version: ${currentVersion.major}.${currentVersion.minor}.${currentVersion.patch}`);
+  
+  rl.question(`Are you sure you want to upgrade to version ${currentVersion.major + 1}.0.0? [y/N] `, (answer) => {
+    if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
+      const newVersion = {
+        major: currentVersion.major + 1,
+        minor: 0,
+        patch: 0
+      };
+      
+      updateVersionFile(newVersion);
+      updatePackageJson(newVersion);
+      
+      // Commit the version change
+      try {
+        execSync('git add src/common/version.ts package.json');
+        execSync(`git commit -m "chore: version bump to ${newVersion.major}.${newVersion.minor}.${newVersion.patch}"`);
+        console.log('Changes committed to git');
+      } catch (error) {
+        console.error('Error committing version changes:', error);
+      }
+      
+      console.log(`Successfully upgraded to version ${newVersion.major}.${newVersion.minor}.${newVersion.patch}`);
+    } else {
+      console.log('Major version upgrade cancelled');
+    }
+    rl.close();
+  });
 }
 
 main(); 

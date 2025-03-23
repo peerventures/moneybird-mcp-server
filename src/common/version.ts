@@ -5,9 +5,9 @@
  * - feat: increment major version
  */
 export const VERSION = {
-  major: 1,
+  major: 0,
   minor: 0,
-  patch: 3,
+  patch: 1,
   toString: function() {
     return `${this.major}.${this.minor}.${this.patch}`;
   }

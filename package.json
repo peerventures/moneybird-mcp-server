@@ -1,6 +1,6 @@
 {
   "name": "moneybird-mcp-server",
-  "version": "1.0.3",
+  "version": "0.0.1",
   "description": "moneybird mcp server",
   "type": "module",
   "main": "dist/index.js",
@@ -15,6 +15,7 @@
     "start:ts": "node --loader ts-node/esm src/index.ts",
     "prepare": "npm run build",
     "version:update": "node scripts/update-version.js",
+    "version:major": "node scripts/major-version.js",
     "precommit": "npm run version:update"
   },
   "author": "vanderheijden86@gmail.com",
@@ -25,10 +26,11 @@
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
-    "shx": "^0.3.4",
     "@types/dotenv": "^8.2.0",
     "@types/node": "^22.13.11",
+    "husky": "^9.1.7",
     "nodemon": "^3.1.9",
+    "shx": "^0.3.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
