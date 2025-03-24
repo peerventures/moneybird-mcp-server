@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "build": "your-build-command",
+    "publish-npm": "node scripts/publish.js",
+    "publish-dry-run": "node scripts/publish.js --dry-run"
+  }
+} 

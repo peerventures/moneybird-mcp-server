@@ -100,7 +100,7 @@ provides various tools to:
 
 1. Clone this repository:
    ```
-   git clone https://github.com/your-username/moneybird-mcp-server.git
+   git clone https://github.com/vanderheijden86/moneybird-mcp-server.git
    cd moneybird-mcp-server
    ```
 
