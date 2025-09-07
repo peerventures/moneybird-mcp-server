@@ -56,9 +56,15 @@ export class MoneybirdClient {
 
   // Generic request method with retry logic
   async request(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: any, retries = 2): Promise<any> {
+
+      if (method !== 'get') {
+          console.error(`Request method ${method} not supported, use GET instead`);
+          throw error;
+      }
+
     // Remove leading slash if present to avoid double slashes
     const normalizedPath = path.startsWith('/') ? path.substring(1) : path;
-    
+
     try {
       console.error(`Attempting ${method.toUpperCase()} request to ${normalizedPath}`);
       const response = await this.client.request({
@@ -66,7 +72,7 @@ export class MoneybirdClient {
         url: `/${this.administrationId}/${normalizedPath}`,
         data
       });
-      
+
       console.error(`Request to ${normalizedPath} completed successfully`);
       return response.data;
     } catch (error: any) {
@@ -76,21 +82,21 @@ export class MoneybirdClient {
         console.error(`Client error (${statusCode}) for ${normalizedPath}, not retrying`);
         throw error;
       }
-      
+
       if (retries > 0) {
         // Exponential backoff: 1000ms, 2000ms, 4000ms, etc.
         const delay = 1000 * Math.pow(2, 2 - retries);
         console.error(`Request to ${normalizedPath} failed, retrying in ${delay}ms... (${retries} attempts left)`);
-        
+
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, delay));
-        
+
         // Retry the request with one less retry attempt
         return this.request(method, path, data, retries - 1);
       }
-      
+
       console.error(`Request to ${normalizedPath} failed after all retry attempts`);
       throw error;
     }
   }
-} 
+}
