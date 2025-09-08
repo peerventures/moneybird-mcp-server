@@ -59,7 +59,7 @@ export class MoneybirdClient {
 
       if (method !== 'get') {
           console.error(`Request method ${method} not supported, use GET instead`);
-          throw error;
+          throw Error;
       }
 
     // Remove leading slash if present to avoid double slashes
