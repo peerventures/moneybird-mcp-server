@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetProductSchema = z.object({
   id: z.string().describe('The ID of the product to retrieve'),
@@ -24,9 +25,9 @@ export const UpdateProductSchema = GetProductSchema.extend({
   ...CreateProductSchema.shape,
 });
 
-export async function getProduct(id: string) {
-  const client = getClient();
-  const products = await client.getProducts();
+export async function getProduct(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const products = await resolved.getProducts();
   const product = products.find((product: any) => product.id === id);
   
   if (!product) {
@@ -36,9 +37,9 @@ export async function getProduct(id: string) {
   return product;
 }
 
-export async function listProducts(options?: z.infer<typeof ListProductsSchema>) {
-  const client = getClient();
-  const products = await client.getProducts();
+export async function listProducts(options?: z.infer<typeof ListProductsSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const products = await resolved.getProducts();
   
   // Basic pagination if requested
   if (options?.page && options?.perPage) {
@@ -56,12 +57,12 @@ export async function listProducts(options?: z.infer<typeof ListProductsSchema>)
   return { products };
 }
 
-export async function createProduct(productData: z.infer<typeof CreateProductSchema>) {
-  const client = getClient();
-  return await client.request('post', 'products', { product: productData });
+export async function createProduct(productData: z.infer<typeof CreateProductSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', 'products', { product: productData });
 }
 
-export async function updateProduct(id: string, productData: Partial<z.infer<typeof CreateProductSchema>>) {
-  const client = getClient();
-  return await client.request('put', `products/${id}`, { product: productData });
-} 
+export async function updateProduct(id: string, productData: Partial<z.infer<typeof CreateProductSchema>>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `products/${id}`, { product: productData });
+}

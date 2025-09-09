@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetInvoiceSchema = z.object({
   id: z.string().describe('The ID of the invoice to retrieve'),
@@ -58,14 +59,14 @@ export const UpdateInvoiceSchema = GetInvoiceSchema.extend({
   ...CreateInvoiceSchema.shape,
 });
 
-export async function getInvoice(id: string) {
-  const client = getClient();
-  return await client.getSalesInvoice(id);
+export async function getInvoice(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.getSalesInvoice(id);
 }
 
-export async function listInvoices(options?: z.infer<typeof ListInvoicesSchema>) {
-  const client = getClient();
-  const invoices = await client.getSalesInvoices();
+export async function listInvoices(options?: z.infer<typeof ListInvoicesSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const invoices = await resolved.getSalesInvoices();
   
   // Filter by state if provided
   let filteredInvoices = invoices;
@@ -89,17 +90,17 @@ export async function listInvoices(options?: z.infer<typeof ListInvoicesSchema>)
   return { invoices: filteredInvoices };
 }
 
-export async function createInvoice(invoiceData: z.infer<typeof CreateInvoiceSchema>) {
-  const client = getClient();
-  return await client.request('post', 'sales_invoices', { sales_invoice: invoiceData });
+export async function createInvoice(invoiceData: z.infer<typeof CreateInvoiceSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', 'sales_invoices', { sales_invoice: invoiceData });
 }
 
-export async function updateInvoice(id: string, invoiceData: Partial<z.infer<typeof CreateInvoiceSchema>>) {
-  const client = getClient();
-  return await client.request('put', `sales_invoices/${id}`, { sales_invoice: invoiceData });
+export async function updateInvoice(id: string, invoiceData: Partial<z.infer<typeof CreateInvoiceSchema>>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `sales_invoices/${id}`, { sales_invoice: invoiceData });
 }
 
-export async function sendInvoice(id: string, options: Omit<z.infer<typeof SendInvoiceSchema>, 'id'>) {
-  const client = getClient();
-  return await client.request('post', `sales_invoices/${id}/send_invoice`, options);
-} 
+export async function sendInvoice(id: string, options: Omit<z.infer<typeof SendInvoiceSchema>, 'id'>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', `sales_invoices/${id}/send_invoice`, options);
+}

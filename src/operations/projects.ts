@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetProjectSchema = z.object({
   id: z.string().describe('The ID of the project to retrieve'),
@@ -23,9 +24,9 @@ export const UpdateProjectSchema = GetProjectSchema.extend({
   ...CreateProjectSchema.shape,
 });
 
-export async function getProject(id: string) {
-  const client = getClient();
-  const projects = await client.getProjects();
+export async function getProject(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const projects = await resolved.getProjects();
   const project = projects.find((project: any) => project.id === id);
   
   if (!project) {
@@ -35,9 +36,9 @@ export async function getProject(id: string) {
   return project;
 }
 
-export async function listProjects(options?: z.infer<typeof ListProjectsSchema>) {
-  const client = getClient();
-  const projects = await client.getProjects();
+export async function listProjects(options?: z.infer<typeof ListProjectsSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const projects = await resolved.getProjects();
   
   // Filter by state if provided
   let filteredProjects = projects;
@@ -61,17 +62,17 @@ export async function listProjects(options?: z.infer<typeof ListProjectsSchema>)
   return { projects: filteredProjects };
 }
 
-export async function createProject(projectData: z.infer<typeof CreateProjectSchema>) {
-  const client = getClient();
-  return await client.request('post', 'projects', { project: projectData });
+export async function createProject(projectData: z.infer<typeof CreateProjectSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', 'projects', { project: projectData });
 }
 
-export async function updateProject(id: string, projectData: Partial<z.infer<typeof CreateProjectSchema>>) {
-  const client = getClient();
-  return await client.request('put', `projects/${id}`, { project: projectData });
+export async function updateProject(id: string, projectData: Partial<z.infer<typeof CreateProjectSchema>>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `projects/${id}`, { project: projectData });
 }
 
-export async function archiveProject(id: string) {
-  const client = getClient();
-  return await client.request('put', `projects/${id}`, { project: { state: 'archived' } });
-} 
+export async function archiveProject(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `projects/${id}`, { project: { state: 'archived' } });
+}

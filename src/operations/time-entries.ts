@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetTimeEntrySchema = z.object({
   id: z.string().describe('The ID of the time entry to retrieve'),
@@ -27,9 +28,9 @@ export const UpdateTimeEntrySchema = GetTimeEntrySchema.extend({
   ...CreateTimeEntrySchema.shape,
 });
 
-export async function getTimeEntry(id: string) {
-  const client = getClient();
-  const entries = await client.getTimeEntries();
+export async function getTimeEntry(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const entries = await resolved.getTimeEntries();
   const entry = entries.find((entry: any) => entry.id === id);
   
   if (!entry) {
@@ -39,9 +40,9 @@ export async function getTimeEntry(id: string) {
   return entry;
 }
 
-export async function listTimeEntries(options?: z.infer<typeof ListTimeEntriesSchema>) {
-  const client = getClient();
-  const entries = await client.getTimeEntries();
+export async function listTimeEntries(options?: z.infer<typeof ListTimeEntriesSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const entries = await resolved.getTimeEntries();
   
   // Apply filters if provided
   let filteredEntries = entries;
@@ -83,17 +84,17 @@ export async function listTimeEntries(options?: z.infer<typeof ListTimeEntriesSc
   return { timeEntries: filteredEntries };
 }
 
-export async function createTimeEntry(timeEntryData: z.infer<typeof CreateTimeEntrySchema>) {
-  const client = getClient();
-  return await client.request('post', 'time_entries', { time_entry: timeEntryData });
+export async function createTimeEntry(timeEntryData: z.infer<typeof CreateTimeEntrySchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', 'time_entries', { time_entry: timeEntryData });
 }
 
-export async function updateTimeEntry(id: string, timeEntryData: Partial<z.infer<typeof CreateTimeEntrySchema>>) {
-  const client = getClient();
-  return await client.request('put', `time_entries/${id}`, { time_entry: timeEntryData });
+export async function updateTimeEntry(id: string, timeEntryData: Partial<z.infer<typeof CreateTimeEntrySchema>>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `time_entries/${id}`, { time_entry: timeEntryData });
 }
 
-export async function deleteTimeEntry(id: string) {
-  const client = getClient();
-  return await client.request('delete', `time_entries/${id}`);
-} 
+export async function deleteTimeEntry(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('delete', `time_entries/${id}`);
+}

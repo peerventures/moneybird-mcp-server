@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetFinancialAccountSchema = z.object({
   id: z.string().describe('The ID of the financial account to retrieve'),
@@ -10,9 +11,9 @@ export const ListFinancialAccountsSchema = z.object({
   perPage: z.number().int().min(1).max(100).optional().describe('Number of items per page (max 100)'),
 });
 
-export async function getFinancialAccount(id: string) {
-  const client = getClient();
-  const accounts = await client.getFinancialAccounts();
+export async function getFinancialAccount(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const accounts = await resolved.getFinancialAccounts();
   const account = accounts.find((account: any) => account.id === id);
   
   if (!account) {
@@ -22,9 +23,9 @@ export async function getFinancialAccount(id: string) {
   return account;
 }
 
-export async function listFinancialAccounts(options?: z.infer<typeof ListFinancialAccountsSchema>) {
-  const client = getClient();
-  const accounts = await client.getFinancialAccounts();
+export async function listFinancialAccounts(options?: z.infer<typeof ListFinancialAccountsSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  const accounts = await resolved.getFinancialAccounts();
   
   // Basic pagination if requested
   if (options?.page && options?.perPage) {
