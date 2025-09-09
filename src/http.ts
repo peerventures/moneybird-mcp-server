@@ -247,7 +247,7 @@ export async function createMoneybirdMcpRouter({ token, administrationId }) {
                             })}`);
                         }
 
-                        const result = await listContacts(options);
+                        const result = await listContacts(options, moneybirdClient);
                         clearInterval(progress);
 
                         const contacts = result.contacts;

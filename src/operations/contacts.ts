@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClient } from '../services/client.js';
+import { MoneybirdClient } from '../services/moneybird.js';
 
 export const GetContactSchema = z.object({
   id: z.string().describe('The ID of the contact to retrieve'),
@@ -44,13 +45,13 @@ export type MoneybirdContact = z.infer<typeof CreateContactSchema> & {
   [key: string]: any;
 };
 
-export async function getContact(id: string) {
-  const client = getClient();
-  return await client.getContact(id);
+export async function getContact(id: string, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.getContact(id);
 }
 
-export async function listContacts(options: z.infer<typeof ListContactsSchema> = {}) {
-  const client = getClient();
+export async function listContacts(options: z.infer<typeof ListContactsSchema> = {}, client?: MoneybirdClient) {
+  const resolved = client || getClient();
   
   // If we have any filtering parameters, use the filter endpoint
   if (options.filter || options.query || options.include_archived || options.todo) {
@@ -76,7 +77,7 @@ export async function listContacts(options: z.infer<typeof ListContactsSchema> =
     ).toString();
     
     // Use the filter endpoint with query parameters
-    const contacts = await client.request('get', `contacts/filter?${queryString}`);
+    const contacts = await resolved.request('get', `contacts/filter?${queryString}`);
     
     return { 
       contacts,
@@ -86,7 +87,7 @@ export async function listContacts(options: z.infer<typeof ListContactsSchema> =
   }
   
   // Otherwise use the standard endpoint
-  const contacts = await client.getContacts();
+  const contacts = await resolved.getContacts();
   
   // Apply client-side pagination if requested
   if (options.page && options.perPage) {
@@ -104,12 +105,12 @@ export async function listContacts(options: z.infer<typeof ListContactsSchema> =
   return { contacts };
 }
 
-export async function createContact(contactData: z.infer<typeof CreateContactSchema>) {
-  const client = getClient();
-  return await client.request('post', 'contacts', { contact: contactData });
+export async function createContact(contactData: z.infer<typeof CreateContactSchema>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('post', 'contacts', { contact: contactData });
 }
 
-export async function updateContact(id: string, contactData: Partial<z.infer<typeof CreateContactSchema>>) {
-  const client = getClient();
-  return await client.request('put', `contacts/${id}`, { contact: contactData });
+export async function updateContact(id: string, contactData: Partial<z.infer<typeof CreateContactSchema>>, client?: MoneybirdClient) {
+  const resolved = client || getClient();
+  return await resolved.request('put', `contacts/${id}`, { contact: contactData });
 } 
